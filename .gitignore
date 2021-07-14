@@ -1,0 +1,9 @@
+*.iml
+*.egg-info
+*.idea
+.coverage
+.tox
+*.pytest_cache
+coverage_html_report
+dist
+*/__pycache__
