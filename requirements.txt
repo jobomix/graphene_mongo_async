@@ -1,0 +1,11 @@
+graphene
+motor
+
+# test
+pytest
+pytest-cov
+snapshottest
+pytest-asyncio
+flake8
+coverage
+black

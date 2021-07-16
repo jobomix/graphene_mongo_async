@@ -10,7 +10,7 @@ def is_db_valid(db):
     )
 
 
-def doc_to_mongo_field(root: Field):
+def select_fields_from_query(root: Field):
     """Match exact set of required fields to fulfill the mongo query"""
     fields_to_query = {}
     if root.selection_set is not None:
@@ -20,7 +20,9 @@ def doc_to_mongo_field(root: Field):
     return fields_to_query
 
 
-def select_edges_fields(info):
+def select_fields_from_edges_and_node(info):
+    """Match exact set of required fields to fulfill the mongo query
+    inside edges and node"""
     result = {}
     for field in info.field_asts:
         for selection in field.selection_set.selections:
@@ -31,3 +33,9 @@ def select_edges_fields(info):
                             if f != "id":
                                 result[to_snake_case(f.name.value)] = 1
     return result
+
+
+def strip_id(doc):
+    if "_id" in doc:
+        doc["id"] = doc["_id"]
+        del doc["_id"]

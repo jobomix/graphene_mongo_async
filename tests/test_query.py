@@ -1,47 +1,65 @@
-import pytest
 import graphene
-from bson.objectid import ObjectId
+import pytest
 from graphene.test import Client
-from graphene_mongo_async.utils import doc_to_mongo_field
+
 from . import dummy_types
 
 
 @pytest.mark.asyncio
-async def test_profile_query(mongo_test_db):
-    async def wait_for_result(id, fields_to_query):
-        return await mongo_test_db.user.find_one({'_id': ObjectId(id)}, fields_to_query)
-
-    class Query(graphene.ObjectType):
-        me = graphene.Field(dummy_types.Me, id=graphene.String(required=True))
-
-        async def resolve_me(self, info, *args, id, **kwargs):
-            if len(info.field_asts) > 0:
-                fields_to_query = doc_to_mongo_field(info.field_asts[0])
-
-            doc = await wait_for_result(id, fields_to_query)
-            if '_id' in doc:
-                doc['id'] = doc['_id']
-                del doc['_id']
-            return dummy_types.Me(**doc)
-
+async def test_friends_query_retrieves_first_10_results(mongo_test_db, snapshot):
     query = """
-        query profileQuery {
-            me(id:"60b4a7425066eda8ccad0256") {
+        query relayQuery {
+            me(id:"60f0153c49c512366274ec00") {
                 id
-                subject
-                height
-                nonSeenProfiles(last: 100) {
+                firstName
+                email
+                friends(first:10) {
                     edges {
-                        cursor
-                        node {
+                      cursor
+                      node {
+                        friendSince
+                        profile {
                             id
-                            email
                             firstName
+                            email
                         }
+                      }
+                    }
+                }
+            }
+        }
+    """
+    schema = graphene.Schema(query=dummy_types.Query)
+    client = Client(schema)
+    result = await client.execute(
+        query, return_promise=True, context={"request": None}
+    )
+    snapshot.assert_match(result)
+
+
+@pytest.mark.asyncio
+async def test_friends_query_display_page_info(mongo_test_db, snapshot):
+    query = """
+        query relayQuery {
+            me(id:"60f0153c49c512366274ec00") {
+                id
+                firstName
+                email
+                friends(first:10, after:"b2JqZWN0SWQ6NjBmMDFhMGI0OWM1MTIzNjYyNzRlYzA1") {
+                    edges {
+                      cursor
+                      node {
+                        friendSince
+                        profile {
+                            id
+                            firstName
+                            email
+                        }
+                      }
                     }
                     pageInfo {
-                        hasPreviousPage
                         hasNextPage
+                        hasPreviousPage
                         startCursor
                         endCursor
                     }
@@ -49,7 +67,47 @@ async def test_profile_query(mongo_test_db):
             }
         }
     """
-    schema = graphene.Schema(query=Query)
+    schema = graphene.Schema(query=dummy_types.Query)
     client = Client(schema)
-    result = await client.execute(query, return_promise=True, context={"request": None})
-    print(result)
+    result = await client.execute(
+        query, return_promise=True, context={"request": None}
+    )
+    snapshot.assert_match(result)
+
+
+@pytest.mark.asyncio
+async def test_find_last_5(mongo_test_db, snapshot):
+    query = """
+        query relayQuery {
+            me(id:"60f0153c49c512366274ec00") {
+                id
+                firstName
+                email
+                friends(last:10, after:"b2JqZWN0SWQ6NjBmMDFhMGI0OWM1MTIzNjYyNzRlYzA1") {
+                    edges {
+                      cursor
+                      node {
+                        friendSince
+                        profile {
+                            id
+                            firstName
+                            email
+                        }
+                      }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        hasPreviousPage
+                        startCursor
+                        endCursor
+                    }
+                }
+            }
+        }
+    """
+    schema = graphene.Schema(query=dummy_types.Query)
+    client = Client(schema)
+    result = await client.execute(
+        query, return_promise=True, context={"request": None}
+    )
+    snapshot.assert_match(result)

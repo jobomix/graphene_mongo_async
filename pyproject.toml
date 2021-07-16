@@ -12,3 +12,9 @@ extend-exclude = '''
 ^/foo.py  # exclude a file named foo.py in the root of the project (in addition to the defaults)
 '''
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]

@@ -11,42 +11,22 @@ from graphql_relay.connection.connectiontypes import Connection, Edge
 ConnectionCursor = str
 
 
-def connection_from_mongo(data, args=None, **kwargs):
+def connection_from_mongo(data,
+                          connection_type=None,
+                          edge_type=None,
+                          page_info_type=None,
+                          ctx={}):
     """
-    A simple function that accepts an array and connection arguments, and
-    returns a connection object for use in GraphQL. It uses array offsets as
-    pagination, so pagination will only work if the array is static.
-    """
-    _len = len(data)
-    return connection_from_mongo_slice(
-        data, args, list_slice_length=_len, **kwargs
-    )
-
-
-def connection_from_mongo_slice(
-        list_slice,
-        args=None,
-        connection_type=None,
-        edge_type=None,
-        pageinfo_type=None,
-        list_slice_length=None,
-        ctx={},
-):
-    """
-    Given a slice (subset) of an array, returns a connection object for use in
-    GraphQL.
-    This function is similar to `connectionFromArray`, but is intended for use
-    cases where you know the cardinality of the connection, consider it too
-    large to materialize the entire array, and instead wish pass in a slice of
-    the total result large enough to cover the range specified in `args`.
+    A simple function that use the graphQL context to retrieve the
+    has_next_page and has_previous_page value
     """
     connection_type = connection_type or Connection
     edge_type = edge_type or Edge
-    pageinfo_type = pageinfo_type or PageInfo
+    page_info_type = page_info_type or PageInfo
 
     edges = [
         edge_type(node=node, cursor=offset_to_cursor(node.id))
-        for i, node in enumerate(list_slice)
+        for i, node in enumerate(data)
     ]
 
     first_edge_cursor = edges[0].cursor if edges else None
@@ -56,7 +36,7 @@ def connection_from_mongo_slice(
 
     result = connection_type(
         edges=edges,
-        page_info=pageinfo_type(
+        page_info=page_info_type(
             start_cursor=first_edge_cursor,
             end_cursor=last_edge_cursor,
             has_previous_page=has_previous_page,

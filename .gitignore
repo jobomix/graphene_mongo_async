@@ -1,9 +1,11 @@
 *.iml
 *.egg-info
 *.idea
+.env
 .coverage
 .tox
+.eggs
 *.pytest_cache
 coverage_html_report
 dist
-*/__pycache__
+__pycache__

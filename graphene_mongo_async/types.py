@@ -21,16 +21,16 @@ class MongoAsyncObjectTypeOptions(ObjectTypeOptions):
 class MongoAsyncObjectType(ObjectType):
     @classmethod
     def __init_subclass_with_meta__(
-        cls,
-        collection=None,
-        db=None,
-        include=None,
-        exclude=None,
-        interfaces=(),
-        possible_types=(),
-        default_resolver=None,
-        _meta=None,
-        **options,
+            cls,
+            collection=None,
+            db=None,
+            include=None,
+            exclude=None,
+            interfaces=(),
+            possible_types=(),
+            default_resolver=None,
+            _meta=None,
+            **options,
     ):
         if _meta:
             assert isinstance(_meta, MongoAsyncObjectTypeOptions), (
@@ -89,10 +89,9 @@ class MongoAsyncConnectionField(Field):
         ).format(connection_type, resolved)
         connection = connection_from_mongo(
             resolved,
-            args,
             connection_type=connection_type,
             edge_type=connection_type.Edge,
-            pageinfo_type=PageInfo,
+            page_info_type=PageInfo,
             ctx=info.context,
         )
         connection.iterable = resolved
@@ -100,7 +99,7 @@ class MongoAsyncConnectionField(Field):
 
     @classmethod
     def connection_resolver(
-        cls, resolver, connection_type, root, info, **args
+            cls, resolver, connection_type, root, info, **args
     ):
         resolved = resolver(root, info, **args)
 
