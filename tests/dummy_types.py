@@ -4,6 +4,7 @@ import os
 import graphene
 import motor.motor_asyncio
 from bson.objectid import ObjectId
+from dotenv import load_dotenv
 from graphene import relay
 from graphene.types import Scalar
 from graphene.types.objecttype import ObjectType
@@ -18,7 +19,9 @@ from graphene_mongo_async.types import MongoAsyncConnectionField
 from graphene_mongo_async.utils import select_fields_from_edges_and_node
 from graphene_mongo_async.utils import strip_id, select_fields_from_query
 
+load_dotenv()
 loop = asyncio.new_event_loop()
+
 client = motor.motor_asyncio.AsyncIOMotorClient(
     os.environ['MONGO_TEST_DB_URI'], io_loop=loop
 )

@@ -1,13 +1,17 @@
+import os
+from datetime import datetime
+
 import motor.motor_asyncio
 import pytest
-import os
 from bson.objectid import ObjectId
+from dotenv import load_dotenv
+
 from .dummy_types import loop
-from datetime import datetime
 
 
 @pytest.fixture(scope="session", autouse=True)
 def check_environment():
+    load_dotenv()
     if 'MONGO_TEST_DB_URI' not in os.environ:
         raise Exception("\n\nMONGO_TEST_DB_URI "
                         "environment variable must be defined\n"

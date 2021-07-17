@@ -9,3 +9,4 @@ pytest-asyncio
 flake8
 coverage
 black
+python-dotenv
