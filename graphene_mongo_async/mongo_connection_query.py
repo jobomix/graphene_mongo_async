@@ -1,4 +1,5 @@
 import pymongo
+from .utils import strip_id
 
 
 class AsyncMongoQueryResult:
@@ -20,8 +21,12 @@ class AsyncMongoQueryResult:
 
 
 async def first_after(
-    collection, query: dict, selection: dict, page_size, last_id=None
+        collection, query: dict, selection: dict, page_size, last_id=None
 ):
+    """Handle first n elements after a specific cursor.
+       It has some overhead, it queries n + 2 elements to compute the
+       has previous page and the has next page booleans.
+    """
     has_previous = None
 
     if last_id is None:
@@ -33,9 +38,7 @@ async def first_after(
 
     data = []
     async for doc in cursor:
-        if "_id" in doc:
-            doc["id"] = doc["_id"]
-            del doc["_id"]
+        strip_id(doc)
         data.append(doc)
 
     has_next = len(data[1:]) > page_size
@@ -71,30 +74,32 @@ async def first_after(
 
 
 async def last_before(
-    collection, query: dict, selection: dict, page_size, last_id=None
+        collection, query: dict, selection: dict, page_size, last_id=None
 ):
+    """Handle the query last n element before a specific cursor
+   It has some overhead, it queries n + 2 elements to compute the
+   has previous page and the has next page booleans.
+   """
     has_next = None
 
     if last_id is None:
         cursor = (
             collection.find(query, selection)
-            .sort("_id", pymongo.DESCENDING)
-            .limit(page_size + 2)
+                .sort("_id", pymongo.DESCENDING)
+                .limit(page_size + 2)
         )
         has_previous = False
     else:
         query.update({"_id": {"$lte": last_id}})
         cursor = (
             collection.find(query, selection)
-            .sort("_id", pymongo.DESCENDING)
-            .limit(page_size + 2)
+                .sort("_id", pymongo.DESCENDING)
+                .limit(page_size + 2)
         )
 
     data = []
     async for doc in cursor:
-        if "_id" in doc:
-            doc["id"] = doc["_id"]
-            del doc["_id"]
+        strip_id(doc)
         data.append(doc)
 
     has_previous = len(data[1:]) > page_size
