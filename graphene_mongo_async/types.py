@@ -1,5 +1,6 @@
 from collections import Iterable
 from functools import partial
+from functools import wraps
 
 from graphene import String, Int
 from graphene.relay.connection import Connection
@@ -9,8 +10,10 @@ from graphene.types import NonNull
 from graphene.types.field import Field
 from graphene.types.objecttype import ObjectType, ObjectTypeOptions
 from graphene.utils.thenables import maybe_thenable
-from .mongo_connection import connection_from_mongo
-from .utils import is_db_valid
+
+from graphene_mongo_async.mongo_connection_query import first_after, last_before
+from .mongo_connection import connection_from_mongo, cursor_to_offset
+from .utils import is_db_valid, select_fields_from_edges_and_node
 
 
 class MongoAsyncObjectTypeOptions(ObjectTypeOptions):
@@ -116,3 +119,77 @@ class MongoAsyncConnectionField(Field):
             parent_resolver
         )
         return partial(self.connection_resolver, resolver, self.type)
+
+
+def mongo_relay_paginate(collection, selection):
+    def wrapped_decorator(func):
+        @wraps(func)
+        async def inner_function(*args, **kwargs):
+            print('I am paginating ...')
+            parent = args[0]
+            info = args[1]
+
+            page_size = None
+            last_id = None
+            mongo_query = first_after
+
+            if "first" in kwargs:
+                page_size = kwargs["first"]
+            if "after" in kwargs:
+                last_id = cursor_to_offset(kwargs["after"])
+            if "last" in kwargs:
+                page_size = kwargs["last"]
+                mongo_query = last_before
+            if "before" in kwargs:
+                mongo_query = last_before
+                last_id = cursor_to_offset(kwargs["before"])
+
+            if page_size is None:
+                page_size = 10
+
+            paginated_query = partial(mongo_query, page_size=page_size, last_id=last_id)
+
+            fields_selection = select_fields_from_edges_and_node(info)
+            fields_selection["friend_id"] = 1
+
+            query_result = await paginated_query(collection=collection, query={'user_id': parent.id},
+                                                 selection=fields_selection)
+
+            return await func(*args, **kwargs)
+
+        return inner_function
+
+    return wrapped_decorator
+
+
+class PaginatedQuery:
+    def __init__(self, info, **kwargs):
+        self.page_size = None
+        self.last_id = None
+        self.mongo_query = first_after
+
+        if "first" in kwargs:
+            self.page_size = kwargs["first"]
+        if "after" in kwargs:
+            self.last_id = cursor_to_offset(kwargs["after"])
+        if "last" in kwargs:
+            self.page_size = kwargs["last"]
+            self.mongo_query = last_before
+        if "before" in kwargs:
+            self.mongo_query = last_before
+            self.last_id = cursor_to_offset(kwargs["before"])
+
+        if self.page_size is None:
+            self.page_size = 10
+
+        self.info = info
+
+    async def execute(self, collection, query, selection):
+        result = await self.mongo_query(
+            collection=collection,
+            query=query,
+            selection=selection, page_size=self.page_size, last_id=self.last_id
+        )
+        self.info.context["has_previous"] = result.has_previous
+        self.info.context["has_next"] = result.has_next
+        return result

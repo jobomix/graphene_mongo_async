@@ -10,12 +10,7 @@ from graphene.types import Scalar
 from graphene.types.objecttype import ObjectType
 from graphql.language import ast
 
-from graphene_mongo_async.mongo_connection import cursor_to_offset
-from graphene_mongo_async.mongo_connection_query import (
-    first_after,
-    last_before,
-)
-from graphene_mongo_async.types import MongoAsyncConnectionField
+from graphene_mongo_async.types import MongoAsyncConnectionField, PaginatedQuery
 from graphene_mongo_async.utils import select_fields_from_edges_and_node
 from graphene_mongo_async.utils import strip_id, select_fields_from_query
 
@@ -90,41 +85,20 @@ class Me(Profile):
     )
 
     @staticmethod
-    async def resolve_friends(me, info, **args):
-        page_size = None
-        last_id = None
-        mongo_query = first_after
-
-        if "first" in args:
-            page_size = args["first"]
-        if "after" in args:
-            last_id = cursor_to_offset(args["after"])
-        if "last" in args:
-            page_size = args["last"]
-            mongo_query = last_before
-        if "before" in args:
-            mongo_query = last_before
-            last_id = cursor_to_offset(args["before"])
-
-        if page_size is None:
-            page_size = 10
+    async def resolve_friends(me, info, **kwargs):
+        paginated = PaginatedQuery(info, **kwargs)
 
         fields_selection = select_fields_from_edges_and_node(info)
         fields_selection["friend_id"] = 1
 
-        # handle relay specific pagination
-        result = await mongo_query(
-            collection=db["friends"],
-            query={'user_id': me.id},
-            selection=fields_selection, page_size=page_size, last_id=last_id
-        )
-        info.context["has_previous"] = result.has_previous
-        info.context["has_next"] = result.has_next
+        query_result = await paginated.execute(collection=db["friends"],
+                                               query={'user_id': me.id},
+                                               selection=fields_selection)
 
-        end_result = []
-        for doc in result.data:
-            end_result.append(Friend(**doc))
-        return end_result
+        result = []
+        for doc in query_result.data:
+            result.append(Friend(**doc))
+        return result
 
 
 class Query(graphene.ObjectType):
